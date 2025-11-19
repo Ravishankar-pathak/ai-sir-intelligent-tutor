@@ -1,0 +1,8 @@
+{
+  "name": "AI Sir - The Intelligent Tutor",
+  "description": "A multi-model AI tutor (Gemini, OpenAI, Ollama) that explains textbook chapters in Hinglish with whiteboard visuals and voice support.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
