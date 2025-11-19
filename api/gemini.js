@@ -63,50 +63,47 @@
 
 
 
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
   const { prompt, imageBase64, history, systemPrompt } = req.body || {};
-  if (!prompt) return res.status(400).json({ error: "Prompt required" });
+
+  if (!prompt) {
+    return res.status(400).json({ error: "Prompt required" });
+  }
 
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
     return res.status(500).json({ error: "GEMINI_API_KEY missing" });
   }
 
-  const MODEL_ID = "models/gemini-1.5-flash-latest";
-
-  const url =
-    `https://generativelanguage.googleapis.com/v1/${MODEL_ID}:generateContent?key=` +
-    key;
-
-  const parts = [];
-
-  if (imageBase64) {
-    parts.push({
-      inlineData: {
-        mimeType: "image/jpeg",
-        data: imageBase64.split(",")[1],
-      },
-    });
-  }
-
-  parts.push({ text: systemPrompt || "" });
-
-  if (history) {
-    parts.push({
-      text: history.map(h => `${h.role}: ${h.content}`).join("\n"),
-    });
-  }
-
-  parts.push({ text: prompt });
-
-  const body = { contents: [{ parts }] };
-
   try {
+    const model = "gemini-1.5-flash-latest";  // ✔ WORKING MODEL
+
+    const url =
+      `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=` +
+      key;
+
+    const body = {
+      contents: [
+        {
+          parts: [
+            imageBase64
+              ? {
+                  inlineData: {
+                    mimeType: "image/jpeg",
+                    data: imageBase64.split(",")[1],
+                  },
+                }
+              : null,
+            { text: `${systemPrompt}\n\n${prompt}` },
+          ].filter(Boolean),
+        },
+      ],
+    };
+
     const resp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -121,10 +118,9 @@ export default async function handler(req, res) {
 
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("") ||
-      "";
+      JSON.stringify(data);
 
-    return res.status(200).json({ text, raw: data });
+    return res.status(200).json({ text });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

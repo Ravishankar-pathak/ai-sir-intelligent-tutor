@@ -71,7 +71,7 @@
 import { SYSTEM_PROMPT } from "../constants";
 
 export const generateGeminiResponse = async (
-  _apiKey: string, // ignore on frontend
+  _apiKey: string,
   prompt: string,
   imageBase64: string | null,
   history: { role: string; content: string }[]
@@ -88,10 +88,6 @@ export const generateGeminiResponse = async (
   });
 
   const data = await res.json();
-
-  if (data.error) {
-    return "⚠️ Server Error: " + JSON.stringify(data.error);
-  }
-
+  if (data.error) return "⚠️ Server Error: " + JSON.stringify(data.error);
   return data.text || "Thinking...";
 };
