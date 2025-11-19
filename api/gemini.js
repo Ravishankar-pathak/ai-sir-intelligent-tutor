@@ -70,77 +70,61 @@ export default async function handler(req, res) {
   }
 
   const { prompt, imageBase64, history, systemPrompt } = req.body || {};
-
-  if (!prompt) {
-    return res.status(400).json({ error: "Prompt required" });
-  }
+  if (!prompt) return res.status(400).json({ error: "Prompt required" });
 
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
-    return res.status(500).json({ error: "Server AI key missing" });
+    return res.status(500).json({ error: "GEMINI_API_KEY missing" });
   }
 
+  const MODEL_ID = "models/gemini-1.5-flash-latest";
+
+  const url =
+    `https://generativelanguage.googleapis.com/v1/${MODEL_ID}:generateContent?key=` +
+    key;
+
+  const parts = [];
+
+  if (imageBase64) {
+    parts.push({
+      inlineData: {
+        mimeType: "image/jpeg",
+        data: imageBase64.split(",")[1],
+      },
+    });
+  }
+
+  parts.push({ text: systemPrompt || "" });
+
+  if (history) {
+    parts.push({
+      text: history.map(h => `${h.role}: ${h.content}`).join("\n"),
+    });
+  }
+
+  parts.push({ text: prompt });
+
+  const body = { contents: [{ parts }] };
+
   try {
-    // ⭐ CHANGE MODEL HERE
-    const model = "gemini-3.1-flash";
-
-    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${key}`;
-
-    // Convert chat history to Gemini format
-    const convertedHistory = history.map((msg) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: [{ text: msg.content }]
-    }));
-
-    const contents = [...convertedHistory];
-
-    // Add system prompt
-    contents.push({
-      role: "user",
-      parts: [{ text: systemPrompt }]
-    });
-
-    // Handle image input
-    if (imageBase64) {
-      contents.push({
-        role: "user",
-        parts: [
-          {
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: imageBase64.split(",")[1]
-            }
-          }
-        ]
-      });
-    }
-
-    // Add user question
-    contents.push({
-      role: "user",
-      parts: [{ text: prompt }]
-    });
-
-    const body = { contents };
-
-    const response = await fetch(url, {
+    const resp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
 
-    const json = await response.json();
+    const data = await resp.json();
 
-    if (!response.ok) {
-      return res.status(500).json({ error: json });
+    if (!resp.ok) {
+      return res.status(resp.status).json({ error: data });
     }
 
     const text =
-      json?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "AI returned empty response";
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("") ||
+      "";
 
-    return res.status(200).json({ text, raw: json });
-
+    return res.status(200).json({ text, raw: data });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
