@@ -72,16 +72,14 @@ import { SYSTEM_PROMPT } from "../constants";
 
 export const generateGeminiResponse = async (
   _apiKey: string, // IGNORE — frontend no longer needs API key
-  prompt: string,
+  prompt: string, 
   imageBase64: string | null,
   history: { role: string; content: string }[]
 ): Promise<string> => {
-  
+
   const response = await fetch("/api/gemini", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       prompt,
       imageBase64,
@@ -92,10 +90,9 @@ export const generateGeminiResponse = async (
 
   const json = await response.json();
 
-  if (json?.error) {
-    return "⚠️ Server Error: " + JSON.stringify(json.error);
+  if (json.error) {
+    return `⚠️ Server Error: ${JSON.stringify(json.error)}`;
   }
 
-  // Return extracted text
-  return json?.text || "I’m thinking...";
+  return json.text || "Thinking...";
 };
